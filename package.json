@@ -1,0 +1,39 @@
+{
+  "$schema": "./package.schema.json",
+  "name": "torch-fellowship-backend",
+  "version": "1.0.0",
+  "description": "Production-ready backend for Torch Fellowship.",
+  "main": "server.js",
+  "type": "module",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "build": "echo 'Build complete - server is ready for production'",
+    "test": "node test-connection.js",
+    "health-check": "node health-check.js",
+    "postinstall": "echo 'Dependencies installed successfully'",
+    "prestart": "node health-check.js"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "bcryptjs": "^3.0.2",
+    "cloudinary": "^2.7.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
+    "express": "^4.21.1",
+    "express-rate-limit": "^8.0.1",
+    "helmet": "^8.1.0",
+    "joi": "^18.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongodb": "^6.18.0",
+    "socket.io": "^4.8.1",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}

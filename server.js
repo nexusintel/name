@@ -108,13 +108,7 @@ const corsOrigins = process.env.NODE_ENV === 'production'
       'https://torchfellowship.org',     // If you have a custom domain
       // Add additional production domains as needed
     ]
-  : [
-      // Development origins
-      'http://localhost:5173', 
-      'http://localhost:3000',
-      'http://127.0.0.1:5173',
-      'http://127.0.0.1:3000'
-    ];
+  
 
 const app = express();
 const server = createServer(app);
@@ -124,7 +118,7 @@ const io = new Server(server, {
     credentials: true
   }
 });
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3000;
 
 // Socket.IO connection handling with comprehensive real-time features
 

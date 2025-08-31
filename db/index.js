@@ -7,6 +7,7 @@ import { UserRole } from '../utils/constants.js';
 const DB_NAME = process.env.DB_NAME || 'torch-fellowship';
 
 let db;
+let client; // Store client reference for graceful shutdown
 
 async function seedSuperAdmin() {
     const usersCollection = db.collection('users');
@@ -74,7 +75,7 @@ export const connectToDatabase = async () => {
         const cleanUri = MONGODB_URI.replace(/^"|"$|^'|'$/g, '').trim();
         console.log(`🔗 Clean URI length: ${cleanUri.length} characters`);
         
-        const client = new MongoClient(cleanUri);
+        client = new MongoClient(cleanUri);
         await client.connect();
         db = client.db(DB_NAME);
         console.log('✅ Successfully connected to MongoDB.');
@@ -95,4 +96,20 @@ export const getDb = () => {
         throw new Error('Database not initialized! Call connectToDatabase first.');
     }
     return db;
+};
+
+// Graceful database connection closing
+export const closeDatabase = async () => {
+    try {
+        if (client) {
+            console.log('Closing MongoDB connection...');
+            await client.close();
+            db = null;
+            client = null;
+            console.log('MongoDB connection closed successfully');
+        }
+    } catch (error) {
+        console.error('Error closing MongoDB connection:', error);
+        throw error;
+    }
 };

@@ -1,0 +1,33 @@
+{"environment":"development","level":"info","message":"Database connection established","service":"torch-fellowship-backend","timestamp":"2025-08-31 15:30:36","version":"1.0.0"}
+{"environment":"development","level":"info","message":"🚀 Server is running on http://localhost:5000","service":"torch-fellowship-backend","timestamp":"2025-08-31 15:30:36","version":"1.0.0"}
+{"environment":"development","level":"info","message":"📡 API endpoints available at http://localhost:5000/api","service":"torch-fellowship-backend","timestamp":"2025-08-31 15:30:36","version":"1.0.0"}
+{"environment":"development","level":"info","message":"🔌 Socket.IO server ready for real-time messaging","service":"torch-fellowship-backend","timestamp":"2025-08-31 15:30:36","version":"1.0.0"}
+{"environment":"development","level":"info","message":"🔍 Debug mode enabled - all requests will be logged","service":"torch-fellowship-backend","timestamp":"2025-08-31 15:30:36","version":"1.0.0"}
+{"environment":"development","level":"info","message":"🌍 Environment: development","service":"torch-fellowship-backend","timestamp":"2025-08-31 15:30:36","version":"1.0.0"}
+{"environment":"development","level":"info","message":"📊 Health checks available at http://localhost:5000/health","service":"torch-fellowship-backend","timestamp":"2025-08-31 15:30:36","version":"1.0.0"}
+{"environment":"development","level":"info","message":"Server is ready to accept connections","service":"torch-fellowship-backend","timestamp":"2025-08-31 15:30:36","version":"1.0.0"}
+{"environment":"development","level":"info","message":"Database connection established","service":"torch-fellowship-backend","timestamp":"2025-08-31 15:30:55","version":"1.0.0"}
+{"environment":"development","level":"info","message":"🚀 Server is running on http://localhost:5000","service":"torch-fellowship-backend","timestamp":"2025-08-31 15:30:55","version":"1.0.0"}
+{"environment":"development","level":"info","message":"📡 API endpoints available at http://localhost:5000/api","service":"torch-fellowship-backend","timestamp":"2025-08-31 15:30:55","version":"1.0.0"}
+{"environment":"development","level":"info","message":"🔌 Socket.IO server ready for real-time messaging","service":"torch-fellowship-backend","timestamp":"2025-08-31 15:30:55","version":"1.0.0"}
+{"environment":"development","level":"info","message":"🔍 Debug mode enabled - all requests will be logged","service":"torch-fellowship-backend","timestamp":"2025-08-31 15:30:55","version":"1.0.0"}
+{"environment":"development","level":"info","message":"🌍 Environment: development","service":"torch-fellowship-backend","timestamp":"2025-08-31 15:30:55","version":"1.0.0"}
+{"environment":"development","level":"info","message":"📊 Health checks available at http://localhost:5000/health","service":"torch-fellowship-backend","timestamp":"2025-08-31 15:30:55","version":"1.0.0"}
+{"environment":"development","level":"info","message":"Server is ready to accept connections","service":"torch-fellowship-backend","timestamp":"2025-08-31 15:30:55","version":"1.0.0"}
+{"environment":"development","level":"info","message":"Database connection established","service":"torch-fellowship-backend","timestamp":"2025-08-31 15:32:37","version":"1.0.0"}
+{"environment":"development","level":"info","message":"🚀 Server is running on http://localhost:5000","service":"torch-fellowship-backend","timestamp":"2025-08-31 15:32:37","version":"1.0.0"}
+{"environment":"development","level":"info","message":"📡 API endpoints available at http://localhost:5000/api","service":"torch-fellowship-backend","timestamp":"2025-08-31 15:32:37","version":"1.0.0"}
+{"environment":"development","level":"info","message":"🔌 Socket.IO server ready for real-time messaging","service":"torch-fellowship-backend","timestamp":"2025-08-31 15:32:37","version":"1.0.0"}
+{"environment":"development","level":"info","message":"🔍 Debug mode enabled - all requests will be logged","service":"torch-fellowship-backend","timestamp":"2025-08-31 15:32:37","version":"1.0.0"}
+{"environment":"development","level":"info","message":"🌍 Environment: development","service":"torch-fellowship-backend","timestamp":"2025-08-31 15:32:37","version":"1.0.0"}
+{"environment":"development","level":"info","message":"📊 Health checks available at http://localhost:5000/health","service":"torch-fellowship-backend","timestamp":"2025-08-31 15:32:37","version":"1.0.0"}
+{"environment":"development","level":"info","message":"Server is ready to accept connections","service":"torch-fellowship-backend","timestamp":"2025-08-31 15:32:37","version":"1.0.0"}
+{"environment":"development","level":"info","message":"Database connection established","service":"torch-fellowship-backend","timestamp":"2025-08-31 15:33:10","version":"1.0.0"}
+{"environment":"development","level":"info","message":"🚀 Server is running on http://localhost:5000","service":"torch-fellowship-backend","timestamp":"2025-08-31 15:33:10","version":"1.0.0"}
+{"environment":"development","level":"info","message":"📡 API endpoints available at http://localhost:5000/api","service":"torch-fellowship-backend","timestamp":"2025-08-31 15:33:10","version":"1.0.0"}
+{"environment":"development","level":"info","message":"🔌 Socket.IO server ready for real-time messaging","service":"torch-fellowship-backend","timestamp":"2025-08-31 15:33:10","version":"1.0.0"}
+{"environment":"development","level":"info","message":"🔍 Debug mode enabled - all requests will be logged","service":"torch-fellowship-backend","timestamp":"2025-08-31 15:33:10","version":"1.0.0"}
+{"environment":"development","level":"info","message":"🌍 Environment: development","service":"torch-fellowship-backend","timestamp":"2025-08-31 15:33:10","version":"1.0.0"}
+{"environment":"development","level":"info","message":"📊 Health checks available at http://localhost:5000/health","service":"torch-fellowship-backend","timestamp":"2025-08-31 15:33:10","version":"1.0.0"}
+{"environment":"development","level":"info","message":"Server is ready to accept connections","service":"torch-fellowship-backend","timestamp":"2025-08-31 15:33:10","version":"1.0.0"}
+{"environment":"development","level":"info","message":"Received SIGINT. Starting graceful shutdown...","service":"torch-fellowship-backend","timestamp":"2025-08-31 15:47:23","version":"1.0.0"}

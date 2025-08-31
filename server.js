@@ -100,21 +100,47 @@ import torchKidsRoutes from './api/torchKids.routes.js';
 // Express App Initialization
 // -----------------------------------------------------------------------------
 
-// CORS configuration - define before using in Socket.IO
-const corsOrigins = process.env.NODE_ENV === 'production' 
-  ? [
-      // Production origins - UPDATE THESE WITH YOUR ACTUAL DOMAINS
-      'https://torchfellowship.netlify.app',  // Replace with your actual Netlify domain
-      'https://torchfellowship.org',     // If you have a custom domain
-      // Add additional production domains as needed
-    ]
-  : [
-      // Development origins
-      'http://localhost:5173', 
+// CORS configuration - environment-specific with enhanced security
+const corsOrigins = (() => {
+  if (process.env.NODE_ENV === 'production') {
+    // Production origins - configured from environment variables
+    const origins = [
+      process.env.FRONTEND_URL, // Primary frontend URL
+      'https://torchfellowship.org',
+      'https://www.torchfellowship.org',
+      'https://torchfellowship.netlify.app',
+      'https://torch-fellowship.vercel.app'
+    ].filter(Boolean); // Remove undefined/null values
+    
+    // Add additional origins from environment if specified
+    if (process.env.ADDITIONAL_CORS_ORIGINS) {
+      const additionalOrigins = process.env.ADDITIONAL_CORS_ORIGINS.split(',').map(origin => origin.trim());
+      origins.push(...additionalOrigins);
+    }
+    
+    console.log('🔒 Production CORS origins:', origins);
+    return origins;
+  } else if (process.env.NODE_ENV === 'staging') {
+    // Staging origins
+    return [
+      'https://staging-torch-fellowship.netlify.app',
+      'https://staging-torchfellowship.org',
+      'http://localhost:5173',
       'http://localhost:3000',
-      'http://127.0.0.1:5173',
-      'http://127.0.0.1:3000'
+      'http://localhost:4173'
     ];
+  } else {
+    // Development origins
+    return [
+      'http://localhost:5173',
+      'http://localhost:3000',
+      'http://localhost:4173',
+      'http://127.0.0.1:5173',
+      'http://127.0.0.1:3000',
+      'http://127.0.0.1:4173'
+    ];
+  }
+})();
 
 const app = express();
 const server = createServer(app);
@@ -124,7 +150,7 @@ const io = new Server(server, {
     credentials: true
   }
 });
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 // Socket.IO connection handling with comprehensive real-time features
 
@@ -426,14 +452,63 @@ export const getOnlineUsers = () => onlineUsers;
 
 
 // -----------------------------------------------------------------------------
-// Global Middleware
+// Global Middleware with Enhanced Security
 // -----------------------------------------------------------------------------
-app.use(helmet()); // Set security HTTP headers
 
-// Enable CORS with environment-specific origins
+// Enhanced Helmet configuration for production security
+app.use(helmet({
+  contentSecurityPolicy: process.env.NODE_ENV === 'production' ? {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+      fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+      imgSrc: ["'self'", 'data:', 'https://res.cloudinary.com', 'https://*.cloudinary.com'],
+      scriptSrc: ["'self'"],
+      connectSrc: ["'self'", 'ws:', 'wss:', ...corsOrigins],
+      frameSrc: ["'none'"],
+      objectSrc: ["'none'"],
+      upgradeInsecureRequests: []
+    }
+  } : false, // Disable CSP in development for easier debugging
+  crossOriginEmbedderPolicy: false, // Allow embedding for Socket.IO
+  hsts: {
+    maxAge: 31536000, // 1 year
+    includeSubDomains: true,
+    preload: true
+  }
+}));
+
+// Enhanced CORS with security options
 app.use(cors({
-  origin: corsOrigins,
-  credentials: true
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
+    
+    if (corsOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    
+    // Log unauthorized CORS attempts in production
+    if (process.env.NODE_ENV === 'production') {
+      console.warn('⚠️ Unauthorized CORS origin attempted:', origin);
+    }
+    
+    const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+    return callback(new Error(msg), false);
+  },
+  credentials: true,
+  optionsSuccessStatus: 200, // Support legacy browsers
+  maxAge: 86400, // Cache preflight response for 24 hours
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'],
+  allowedHeaders: [
+    'Origin', 
+    'X-Requested-With', 
+    'Content-Type', 
+    'Accept', 
+    'Authorization',
+    'Cache-Control',
+    'X-CSRF-Token'
+  ]
 }));
 
 // Debug logging middleware
@@ -442,19 +517,221 @@ app.use((req, res, next) => {
   next();
 });
 
-// Rate Limiter for general API requests
-const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per window
-  standardHeaders: true,
-  legacyHeaders: false,
-    message: 'Too many requests from this IP, please try again after 15 minutes'
-});
+// Environment-specific rate limiting
+const getRateLimitConfig = () => {
+  if (process.env.NODE_ENV === 'production') {
+    return {
+      windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
+      max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
+      standardHeaders: true,
+      legacyHeaders: false,
+      message: {
+        error: 'Too many requests from this IP, please try again later.',
+        retryAfter: 15 * 60 // 15 minutes in seconds
+      },
+      // Skip rate limiting for health checks
+      skip: (req) => {
+        return req.path.startsWith('/health') || 
+               req.path.startsWith('/ready') || 
+               req.path.startsWith('/live') ||
+               req.path.startsWith('/metrics');
+      },
+      // Custom key generator for better rate limiting
+      keyGenerator: (req) => {
+        return req.ip || req.connection.remoteAddress;
+      },
+      // Handle rate limit exceeded
+      handler: (req, res) => {
+        console.warn(`Rate limit exceeded for IP: ${req.ip}, Path: ${req.path}`);
+        res.status(429).json({
+          error: 'Too many requests',
+          message: 'Rate limit exceeded. Please try again later.',
+          retryAfter: 15 * 60
+        });
+      }
+    };
+  } else {
+    // More lenient for development/staging
+    return {
+      windowMs: 15 * 60 * 1000,
+      max: 1000, // Much higher limit for development
+      standardHeaders: true,
+      legacyHeaders: false,
+      message: 'Rate limit exceeded in development mode'
+    };
+  }
+};
+
+const apiLimiter = rateLimit(getRateLimitConfig());
 app.use('/api/', apiLimiter);
 
 // Body Parsers
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
+
+// -----------------------------------------------------------------------------
+// Health Check Endpoints for Load Balancer
+// -----------------------------------------------------------------------------
+
+// Basic health check endpoint
+app.get('/health', async (req, res) => {
+  try {
+    const db = getDb();
+    
+    // Quick database ping
+    await db.admin().ping();
+    
+    res.status(200).json({
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      version: process.env.npm_package_version || '1.0.0',
+      environment: process.env.NODE_ENV || 'development',
+      memory: {
+        used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+        total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
+        external: Math.round(process.memoryUsage().external / 1024 / 1024)
+      },
+      pid: process.pid
+    });
+  } catch (error) {
+    console.error('Health check failed:', error);
+    res.status(503).json({
+      status: 'unhealthy',
+      timestamp: new Date().toISOString(),
+      error: error.message
+    });
+  }
+});
+
+// Detailed health check endpoint with dependency checks
+app.get('/health/detailed', async (req, res) => {
+  const healthStatus = {
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development',
+    version: process.env.npm_package_version || '1.0.0',
+    checks: {
+      database: { status: 'unknown' },
+      memory: { status: 'unknown' },
+      socket: { status: 'unknown' }
+    }
+  };
+
+  let overallHealthy = true;
+
+  try {
+    // Database health check
+    const db = getDb();
+    const dbStart = Date.now();
+    await db.admin().ping();
+    const dbLatency = Date.now() - dbStart;
+    
+    healthStatus.checks.database = {
+      status: 'healthy',
+      latency: `${dbLatency}ms`,
+      connection: 'active'
+    };
+  } catch (error) {
+    healthStatus.checks.database = {
+      status: 'unhealthy',
+      error: error.message
+    };
+    overallHealthy = false;
+  }
+
+  // Memory health check
+  const memUsage = process.memoryUsage();
+  const memUsedMB = Math.round(memUsage.heapUsed / 1024 / 1024);
+  const memTotalMB = Math.round(memUsage.heapTotal / 1024 / 1024);
+  const memPercentage = Math.round((memUsage.heapUsed / memUsage.heapTotal) * 100);
+  
+  if (memPercentage > 90) {
+    healthStatus.checks.memory = {
+      status: 'warning',
+      used: `${memUsedMB}MB`,
+      total: `${memTotalMB}MB`,
+      percentage: `${memPercentage}%`,
+      message: 'High memory usage'
+    };
+  } else {
+    healthStatus.checks.memory = {
+      status: 'healthy',
+      used: `${memUsedMB}MB`,
+      total: `${memTotalMB}MB`,
+      percentage: `${memPercentage}%`
+    };
+  }
+
+  // Socket.IO health check
+  try {
+    const connectedUsers = onlineUsers.size;
+    healthStatus.checks.socket = {
+      status: 'healthy',
+      connectedUsers,
+      engine: 'socket.io'
+    };
+  } catch (error) {
+    healthStatus.checks.socket = {
+      status: 'unhealthy',
+      error: error.message
+    };
+    overallHealthy = false;
+  }
+
+  healthStatus.status = overallHealthy ? 'healthy' : 'unhealthy';
+  const statusCode = overallHealthy ? 200 : 503;
+  
+  res.status(statusCode).json(healthStatus);
+});
+
+// Readiness probe for Kubernetes/container orchestration
+app.get('/ready', async (req, res) => {
+  try {
+    const db = getDb();
+    await db.admin().ping();
+    
+    res.status(200).json({
+      status: 'ready',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(503).json({
+      status: 'not ready',
+      timestamp: new Date().toISOString(),
+      error: error.message
+    });
+  }
+});
+
+// Liveness probe for Kubernetes/container orchestration
+app.get('/live', (req, res) => {
+  res.status(200).json({
+    status: 'alive',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    pid: process.pid
+  });
+});
+
+// Server metrics endpoint for monitoring
+app.get('/metrics', (req, res) => {
+  const metrics = {
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    memory: process.memoryUsage(),
+    cpu: process.cpuUsage(),
+    pid: process.pid,
+    platform: process.platform,
+    arch: process.arch,
+    nodeVersion: process.version,
+    socketConnections: onlineUsers.size,
+    environment: process.env.NODE_ENV || 'development'
+  };
+  
+  res.status(200).json(metrics);
+});
 
 // -----------------------------------------------------------------------------
 // API Routes
@@ -497,10 +774,51 @@ app.use('/api/torch-kids', torchKidsRoutes);
 // });
 
 // -----------------------------------------------------------------------------
+// Root Route and Static Assets
+// -----------------------------------------------------------------------------
+// Root route - API information
+app.get('/', (req, res) => {
+  res.json({
+    name: 'Torch Fellowship Backend API',
+    version: '1.0.0',
+    description: 'Production-ready backend service for Torch Fellowship',
+    environment: process.env.NODE_ENV || 'development',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      health: '/health',
+      api: '/api',
+      docs: 'API documentation available at /api endpoints'
+    },
+    status: 'operational'
+  });
+});
+
+// Handle favicon requests to prevent 404 errors
+app.get('/favicon.ico', (req, res) => {
+  res.status(204).end(); // No content
+});
+
+// Handle robots.txt for production
+app.get('/robots.txt', (req, res) => {
+  res.type('text/plain');
+  if (process.env.NODE_ENV === 'production') {
+    res.send('User-agent: *\nAllow: /\n\nSitemap: https://' + req.get('host') + '/sitemap.xml');
+  } else {
+    res.send('User-agent: *\nDisallow: /');
+  }
+});
+
+// -----------------------------------------------------------------------------
 // Error Handling
 // -----------------------------------------------------------------------------
 // Handle all routes that are not found
 app.all('*', (req, res, next) => {
+  // Skip favicon and common browser requests that shouldn't be logged as errors
+  if (req.originalUrl.match(/\.(ico|png|jpg|jpeg|gif|css|js|woff|woff2|ttf|eot|svg)$/)) {
+    return res.status(404).end();
+  }
+  
   next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
 });
 
@@ -508,22 +826,176 @@ app.all('*', (req, res, next) => {
 app.use(errorHandler);
 
 // -----------------------------------------------------------------------------
-// Server Startup
+// Graceful Shutdown Handling
+// -----------------------------------------------------------------------------
+
+// Import logger if available
+let logger;
+try {
+  const loggerModule = await import('./utils/logger.js');
+  logger = loggerModule.default;
+} catch (error) {
+  // Fallback to console if logger is not available
+  logger = console;
+}
+
+// Flag to track if shutdown is in progress
+let isShuttingDown = false;
+
+// Graceful shutdown function
+const gracefulShutdown = async (signal) => {
+  if (isShuttingDown) {
+    logger.warn('Shutdown already in progress, forcing exit...');
+    process.exit(1);
+  }
+  
+  isShuttingDown = true;
+  logger.info(`Received ${signal}. Starting graceful shutdown...`);
+  
+  // Set a timeout for forced shutdown
+  const forceShutdownTimer = setTimeout(() => {
+    logger.error('Forced shutdown - graceful shutdown took too long');
+    process.exit(1);
+  }, 30000); // 30 seconds timeout
+  
+  try {
+    // Stop accepting new connections
+    logger.info('Closing HTTP server...');
+    server.close(async () => {
+      logger.info('HTTP server closed');
+      
+      try {
+        // Close Socket.IO connections
+        logger.info('Closing Socket.IO connections...');
+        
+        // Notify all connected users about server shutdown
+        io.emit('server-shutdown', {
+          message: 'Server is shutting down for maintenance. Please reconnect in a moment.',
+          timestamp: new Date().toISOString()
+        });
+        
+        // Give clients time to receive the message
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Close all Socket.IO connections
+        io.close(() => {
+          logger.info('Socket.IO server closed');
+        });
+        
+        // Close database connections
+        logger.info('Closing database connections...');
+        const { closeDatabase } = await import('./db/index.js');
+        if (closeDatabase) {
+          await closeDatabase();
+          logger.info('Database connections closed');
+        }
+        
+        // Clear the forced shutdown timer
+        clearTimeout(forceShutdownTimer);
+        
+        logger.info('Graceful shutdown completed successfully');
+        process.exit(0);
+        
+      } catch (error) {
+        logger.error('Error during shutdown process:', error);
+        clearTimeout(forceShutdownTimer);
+        process.exit(1);
+      }
+    });
+    
+    // Stop accepting new HTTP connections
+    server.keepAliveTimeout = 5000;
+    server.headersTimeout = 10000;
+    
+  } catch (error) {
+    logger.error('Error initiating graceful shutdown:', error);
+    clearTimeout(forceShutdownTimer);
+    process.exit(1);
+  }
+};
+
+// Handle process signals for graceful shutdown
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM')); // PM2 stop/restart
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));   // Ctrl+C
+process.on('SIGHUP', () => gracefulShutdown('SIGHUP'));   // Terminal closed
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  logger.error('Uncaught Exception:', error);
+  gracefulShutdown('uncaughtException');
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  gracefulShutdown('unhandledRejection');
+});
+
+// PM2 specific graceful shutdown
+process.on('message', (msg) => {
+  if (msg === 'shutdown') {
+    logger.info('Received PM2 shutdown message');
+    gracefulShutdown('PM2_SHUTDOWN');
+  }
+});
+
+// For Docker containers - handle SIGTERM properly
+if (process.env.NODE_ENV === 'production') {
+  // Ensure we respond to SIGTERM within 10 seconds
+  process.on('SIGTERM', () => {
+    logger.info('SIGTERM received in production mode');
+    setTimeout(() => {
+      logger.error('Could not close connections in time, forcefully shutting down');
+      process.exit(1);
+    }, 10000);
+  });
+}
+
+// Health check to indicate readiness (important for Kubernetes/Docker)
+const setServerReady = () => {
+  // Signal to PM2 that the server is ready
+  if (process.send) {
+    process.send('ready');
+  }
+  
+  logger.info('Server is ready to accept connections');
+};
+
+// -----------------------------------------------------------------------------
+// Server Startup with Graceful Handling
 // -----------------------------------------------------------------------------
 async function startServer() {
   try {
     // Connect to database first
     await connectToDatabase();
+    logger.info('Database connection established');
     
     // Start HTTP server with Socket.IO
     server.listen(PORT, () => {
-      console.log(`🚀 Server is running on http://localhost:${PORT}`);
-      console.log(`📡 API endpoints available at http://localhost:${PORT}/api`);
-      console.log(`🔌 Socket.IO server ready for real-time messaging`);
-      console.log(`🔍 Debug mode enabled - all requests will be logged`);
+      logger.info(`🚀 Server is running on http://localhost:${PORT}`);
+      logger.info(`📡 API endpoints available at http://localhost:${PORT}/api`);
+      logger.info(`🔌 Socket.IO server ready for real-time messaging`);
+      logger.info(`🔍 Debug mode enabled - all requests will be logged`);
+      logger.info(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+      logger.info(`📊 Health checks available at http://localhost:${PORT}/health`);
+      
+      // Signal that server is ready
+      setServerReady();
     });
+    
+    // Handle server errors
+    server.on('error', (error) => {
+      if (error.code === 'EADDRINUSE') {
+        logger.error(`Port ${PORT} is already in use`);
+        process.exit(1);
+      } else {
+        logger.error('Server error:', error);
+        process.exit(1);
+      }
+    });
+    
   } catch (error) {
-    console.error('❌ Failed to start server:', error.message);
+    logger.error('❌ Failed to start server:', error.message);
     process.exit(1);
   }
 }

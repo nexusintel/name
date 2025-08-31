@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  torch-fellowship-backend:
+    build: .
+    container_name: torch-fellowship-backend
+    restart: unless-stopped
+    
+    # Environment variables
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+    
+    # Port mapping
+    ports:
+      - "5000:5000"
+    
+    # Volume mounts for persistence
+    volumes:
+      - ./logs:/app/logs
+      - /etc/localtime:/etc/localtime:ro
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "node", "health-check.js"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # Network configuration
+    networks:
+      - torch-network
+
+networks:
+  torch-network:
+    driver: bridge

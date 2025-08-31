@@ -100,47 +100,21 @@ import torchKidsRoutes from './api/torchKids.routes.js';
 // Express App Initialization
 // -----------------------------------------------------------------------------
 
-// CORS configuration - environment-specific with enhanced security
-const corsOrigins = (() => {
-  if (process.env.NODE_ENV === 'production') {
-    // Production origins - configured from environment variables
-    const origins = [
-      process.env.FRONTEND_URL, // Primary frontend URL
-      'https://torchfellowship.org',
-      'https://www.torchfellowship.org',
-      'https://torchfellowship.netlify.app',
-      'https://torch-fellowship.vercel.app'
-    ].filter(Boolean); // Remove undefined/null values
-    
-    // Add additional origins from environment if specified
-    if (process.env.ADDITIONAL_CORS_ORIGINS) {
-      const additionalOrigins = process.env.ADDITIONAL_CORS_ORIGINS.split(',').map(origin => origin.trim());
-      origins.push(...additionalOrigins);
-    }
-    
-    console.log('🔒 Production CORS origins:', origins);
-    return origins;
-  } else if (process.env.NODE_ENV === 'staging') {
-    // Staging origins
-    return [
-      'https://staging-torch-fellowship.netlify.app',
-      'https://staging-torchfellowship.org',
-      'http://localhost:5173',
+// CORS configuration - define before using in Socket.IO
+const corsOrigins = process.env.NODE_ENV === 'production' 
+  ? [
+      // Production origins - UPDATE THESE WITH YOUR ACTUAL DOMAINS
+      'https://torchfellowship.netlify.app',  // Replace with your actual Netlify domain
+      'https://torchfellowship.org',     // If you have a custom domain
+      // Add additional production domains as needed
+    ]
+  : [
+      // Development origins
+      'http://localhost:5173', 
       'http://localhost:3000',
-      'http://localhost:4173'
-    ];
-  } else {
-    // Development origins
-    return [
-      'http://localhost:5173',
-      'http://localhost:3000',
-      'http://localhost:4173',
       'http://127.0.0.1:5173',
-      'http://127.0.0.1:3000',
-      'http://127.0.0.1:4173'
+      'http://127.0.0.1:3000'
     ];
-  }
-})();
 
 const app = express();
 const server = createServer(app);
@@ -150,7 +124,7 @@ const io = new Server(server, {
     credentials: true
   }
 });
-const PORT = process.env.PORT || 5001;
+const PORT = process.env.PORT || 5000;
 
 // Socket.IO connection handling with comprehensive real-time features
 
